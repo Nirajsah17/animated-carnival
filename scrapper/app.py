@@ -81,6 +81,7 @@ def scrape_song_details(song_url):
             movie_name = '' 
         metadata['metadata']['name'] = song_name
         metadata['metadata']['movie'] = movie_name 
+        
     # Extract movie name from breadcrumbs (second last element)
     if len(breadcrumbs) > 1:
         metadata['metadata']['movie'] = breadcrumbs[-2].get_text(strip=True).replace('Mp3 Songs', '').strip()
@@ -191,7 +192,7 @@ def main():
             all_songs_metadata.append(song_metadata)
             
             # Print metadata for each song
-        #     print(f"Scraped: {song_url}")
+            print(f"Scraped: {song_url}")
         #     print(json.dumps(song_metadata, indent=4))
         #     print("\n" + "="*50 + "\n")
         except Exception as e:
