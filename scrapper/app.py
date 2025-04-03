@@ -3,6 +3,34 @@ from bs4 import BeautifulSoup
 import json
 import csv
 
+default_image_url="https://t4.ftcdn.net/jpg/12/06/04/67/240_F_1206046749_MdaIPC3LiU3M113XON2NikeVu3QwNFZt.jpg"
+
+def get_first_movie_image(movie_name): 
+    imdb_url = f"https://www.imdb.com/find/?q={movie_name}&ref_=nv_sr_sm"
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Referer": "https://www.imdb.com/"
+    }
+    response = requests.get(imdb_url, headers=headers)
+    if response.status_code != 200:
+        print(f"Failed to fetch IMDb page. Status Code: {response.status_code}")
+        return default_image_url
+    soup = BeautifulSoup(response.text, "html.parser")
+    target_div = soup.find_all("div", class_="sc-b03627f1-2 gWHDBT")
+    target_div = target_div[1]
+    if not target_div:
+        print("Div with class 'sc-b03627f1-2 gWHDBT' not found.")
+        return default_image_url
+    first_li = target_div.find("ul").find("li") if target_div.find("ul") else None
+    if not first_li:
+        print("No <li> elements found inside <ul>.")
+        return default_image_url
+    img_tag = first_li.find("img")
+    if img_tag and "src" in img_tag.attrs:
+        return img_tag["src"]
+    return default_image_url
+    
+
 def scrape_list_page(url, visited=None):
     if visited is None:
         visited = set()  # Initialize visited set
@@ -208,4 +236,6 @@ def main():
     print(f"Saved metadata for {len(all_songs_metadata)} songs")
 
 if __name__ == '__main__':
-    main()
+    # main()
+    soup = get_first_movie_image("Don")
+    print(soup)
