@@ -2,6 +2,8 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import csv
+import re
+
 
 default_image_url="https://t4.ftcdn.net/jpg/12/06/04/67/240_F_1206046749_MdaIPC3LiU3M113XON2NikeVu3QwNFZt.jpg"
 
@@ -78,7 +80,6 @@ def scrape_song_details(song_url):
     soup = BeautifulSoup(response.text, 'html.parser')
 
     metadata = {
-        "metadata": {
             "name": "",
             "movie": "",
             "artists": [],
@@ -87,14 +88,13 @@ def scrape_song_details(song_url):
             "genres": [],
             "banner_img": "",
             "source": song_url
-        }
     }
 
     # Extract metadata from the final page
     breadcrumbs = soup.select('h1')  # Get all links in breadcrumb
     if len(breadcrumbs) > 0:
         print("breadcrumbs",breadcrumbs)
-        # metadata['metadata']['name'] = breadcrumbs[-1].get_text(strip=True).replace('Mp3 Song', '').strip()
+        # metadata['name'] = breadcrumbs[-1].get_text(strip=True).replace('Mp3 Song', '').strip()
         breadcrumb_text = breadcrumbs[-1].get_text(strip=True).replace('Mp3 Song', '').strip()
         breadcrumb_text = breadcrumb_text.replace('Free Download', '').strip()
     
@@ -103,38 +103,37 @@ def scrape_song_details(song_url):
     
         if len(parts) > 1:
             song_name = parts[0].strip()
-            movie_name = parts[1].strip()
+            movie_name_text = parts[1].strip()
         else:
             song_name = parts[0].strip()
-            movie_name = '' 
-        metadata['metadata']['name'] = song_name
-        metadata['metadata']['movie'] = movie_name 
-        
-    # Extract movie name from breadcrumbs (second last element)
+            movie_name_text = '' 
+        metadata['name'] = song_name
+        movie_name = re.sub(r' \d+ Kbps\.mp3$', '', movie_name_text)
+        metadata['movie'] = movie_name
+        metadata['banner_img'] = get_first_movie_image(movie_name)
+
     if len(breadcrumbs) > 1:
-        metadata['metadata']['movie'] = breadcrumbs[-2].get_text(strip=True).replace('Mp3 Songs', '').strip()
+        metadata['movie'] = breadcrumbs[-2].get_text(strip=True).replace('Mp3 Songs', '').strip()
     file_size = soup.select('center > strong') 
     if file_size:
-        metadata['metadata']['file_size'] = file_size[0].get_text(strip=True)
+        # metadata['file_size'] = file_size[0].get_text(strip=True)
+        file_size_text = file_size[0].get_text(strip=True)
+        metadata['file_size'] = file_size_text.strip('[]').strip()  # Remove extra brackets and spaces if present
     # Extract artists (from the center tag with artist links)
     artist_center = soup.select('center > b > font > a')
-    print("artist", artist_center)
-    # if artist_center:
-    #     artist_links = artist_center.find_all('a', href=lambda x: x and 'artistlist.php' in x)
-    #     metadata['metadata']['artists'] = [artist.get_text(strip=True) for artist in artist_links]
     if artist_center:
     # Filter links to only include those with 'artistlist.php' in the href attribute
         artist_links = [artist for artist in artist_center if 'artistlist.php' in artist['href']]
     
     # Store artist names (text) in the metadata dictionary
-        metadata['metadata']['artists'] = [artist.get_text(strip=True) for artist in artist_links]
+        metadata['artists'] = [artist.get_text(strip=True) for artist in artist_links]
 
     # Extract year (from the center tag with year)
 
     year_center = soup.select_one('center:contains("[Year:") b font')
     if year_center:
         year_text = year_center.get_text(strip=True)
-        metadata['metadata']['year'] = year_text
+        metadata['year'] = year_text
 
         # if 'Year:' in year_text:
 
@@ -143,16 +142,16 @@ def scrape_song_details(song_url):
     if download_div:
         download_link = download_div.find('a', href=True)
         if download_link:
-            metadata['metadata']['download_link'] = download_link['href']
+            metadata['download_link'] = download_link['href']
             # File size might be in the related files section
             size_tag = soup.find('small')
             if size_tag:
-                metadata['metadata']['file_size'] = size_tag.get_text(strip=True).strip('[]')
+                metadata['file_size'] = size_tag.get_text(strip=True).strip('[]')
 
     # Extract audio source (from video tag)
     video_tag = soup.find('video')
     if video_tag and video_tag.find('source'):
-        metadata['metadata']['audio_source'] = video_tag.find('source')['src']
+        metadata['audio_source'] = video_tag.find('source')['src']
 
     # Extract related files
     related_files = []
@@ -163,7 +162,7 @@ def scrape_song_details(song_url):
             'name': file_name,
             'url': f"https://mazafree.com{file_url}" if file_url.startswith('/') else file_url
         })
-    metadata['metadata']['related_files'] = related_files
+    metadata['related_files'] = related_files
 
     return metadata
 
@@ -221,8 +220,8 @@ def main():
             
             # Print metadata for each song
             print(f"Scraped: {song_url}")
-        #     print(json.dumps(song_metadata, indent=4))
-        #     print("\n" + "="*50 + "\n")
+            print(json.dumps(song_metadata, indent=4))
+            print("\n" + "="*50 + "\n")
         except Exception as e:
             print(f"Error scraping {song_url}: {str(e)}")
 
@@ -231,11 +230,11 @@ def main():
     #     json.dump(all_songs_metadata, f, indent=4)
 
     # Save metadata to CSV file
-    save_metadata_to_csv(all_songs_metadata)
+    # save_metadata_to_csv(all_songs_metadata)
 
     print(f"Saved metadata for {len(all_songs_metadata)} songs")
 
 if __name__ == '__main__':
-    # main()
-    soup = get_first_movie_image("Don")
-    print(soup)
+    main()
+    # soup = get_first_movie_image("Don")
+    # print(soup)
