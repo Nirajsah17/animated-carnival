@@ -32,7 +32,29 @@ def get_first_movie_image(movie_name):
         return img_tag["src"]
     return default_image_url
     
-
+def get_video_url_from_webpage(url):
+    # Send a GET request to the URL to fetch the HTML content
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code != 200:
+        print("Failed to retrieve the webpage.")
+        return None
+    
+    # Parse the HTML content using BeautifulSoup
+    soup = BeautifulSoup(response.text, 'html.parser')
+    
+    # Find the <video> tag and then the <source> tag inside it
+    video_tag = soup.find('video')
+    if video_tag:
+        source_tag = video_tag.find('source')
+        if source_tag and source_tag.get('src'):
+            return source_tag['src']
+    
+    return None
+    
 def scrape_list_page(url, visited=None):
     if visited is None:
         visited = set()  # Initialize visited set
@@ -72,7 +94,6 @@ def scrape_list_page(url, visited=None):
 
 # Step 2: Scrape song details from the final metadata page (unchanged)
 def scrape_song_details(song_url):
-    print(song_url)
     """
     Extract metadata from the final song page.
     """
@@ -158,9 +179,10 @@ def scrape_song_details(song_url):
     for item in soup.select('div.listing2 a.item'):
         file_name = item.get_text(strip=True)
         file_url = item['href']
+        url = f"https://mazafree.com{file_url}" if file_url.startswith('/') else file_url
         related_files.append({
             'name': file_name,
-            'url': f"https://mazafree.com{file_url}" if file_url.startswith('/') else file_url
+            'url': get_video_url_from_webpage(url)
         })
     metadata['related_files'] = related_files
 
@@ -236,5 +258,5 @@ def main():
 
 if __name__ == '__main__':
     main()
-    # soup = get_first_movie_image("Don")
+    # soup = get_video_url_from_webpage('https://mazafree.com/file/548125/ambar-se-toda-rrr-320-kbps.html')
     # print(soup)
